@@ -1,0 +1,22 @@
+name: Build Mac App
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller customtkinter opencv-python tf-keras "numpy<2.0.0" deepface
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --noconsole --onefile --name "NephewPhotoSorter" Main_app.py
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Mac-App
+          path: dist/NephewPhotoSorter
