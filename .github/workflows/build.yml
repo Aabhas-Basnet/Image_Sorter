@@ -4,19 +4,25 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4  # Updated to v4
+      
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Updated to v5
         with:
           python-version: '3.11'
+          
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install pyinstaller customtkinter opencv-python tf-keras "numpy<2.0.0" deepface
+          
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconsole --onefile --name "NephewPhotoSorter" Main_app.py
+          # Adding --collect-all deepface helps ensure the AI models are bundled correctly
+          pyinstaller --noconsole --onefile --collect-all deepface --name "NephewPhotoSorter" Main_app.py
+          
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # FIXED: Now using v4
         with:
-          name: Mac-App
+          name: Mac-App-Portable
           path: dist/NephewPhotoSorter
