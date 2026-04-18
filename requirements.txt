@@ -1,6 +1,5 @@
 streamlit
 deepface
-retinaface
-tf-keras
 opencv-python-headless
-numpy<2.0.0
+tf-keras
+numpy>=1.21.2,<2.0.0
