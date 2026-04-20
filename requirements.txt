@@ -1,5 +1,6 @@
-streamlit
-deepface
-opencv-python-headless
-tf-keras
-numpy>=1.21.2,<2.0.0
+streamlit==1.55.0
+deepface==0.0.99
+tensorflow==2.13.0
+tf-keras==2.15.0
+opencv-python-headless==4.11.0.86
+numpy==1.24.3
