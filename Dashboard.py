@@ -5,56 +5,74 @@ import zipfile
 import io
 from deepface import DeepFace
 
-st.set_page_config(page_title="Ultimate Pro Sorter", layout="wide")
+st.set_page_config(page_title="Pro-Cull Nuance", layout="wide")
 
-def get_category(img, file_bytes):
+def get_pro_category(img):
+    # 1. TECHNICAL BLUR CHECK (Standard for pros)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()
+    if blur_score < 100:
+        return "4_Technical_Reject/Blurry_Photos"
+
     try:
-        # 1. THE HUMAN CHECK (Precision Focus)
-        results = DeepFace.analyze(img, actions=['emotion'], detector_backend='retinaface', silent=True)
+        # Normalize lighting to force geometric recognition over 'lighting vibes'
+        img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+        img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
+        norm_img = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+
+        results = DeepFace.analyze(norm_img, actions=['emotion'], detector_backend='retinaface', silent=True)
         e = results[0]['emotion']
         
-        # MOOD SPECTRUM LOGIC
-        if e['happy'] > 80: return "1_Happy/Ecstatic"
-        if e['happy'] > 20: return "1_Happy/Pleasant_Smile"
-        if e['neutral'] > 50: return "2_Neutral/Relaxed"
-        if e['neutral'] > 20: return "2_Neutral/Serious_Candid"
-        if e['sad'] > 30: return "3_Sad/Melancholy"
-        return "2_Neutral/Mixed_Expression"
+        # --- NEW NUANCED CATEGORIES ---
+        
+        # A. THE SMILE SPECTRUM
+        if e['happy'] > 95: 
+            return "1_Selections/High_Energy_Laugh" # Vibrant, open mouth
+        if e['happy'] > 40: 
+            return "1_Selections/Subtle_Social_Smile" # Posed/Polite smile
+            
+        # B. THE "PORTRAIT" SPECTRUM (Serious/Neutral)
+        if e['neutral'] > 80:
+            return "1_Selections/Neutral_High_Focus" # Serious editorial look
+        if e['neutral'] > 30:
+            return "2_Candids/Relaxed_Natural" # Softer, non-smiling but calm
+            
+        # C. STORY & EMOTION (The "Artistic" shots)
+        if e['surprise'] > 40:
+            return "2_Candids/Surprise_Candid" # Great for wedding toasts/reactions
+        if e['sad'] > 30 or e['fear'] > 30:
+            return "2_Candids/Emotional_Deep" # Pensive, moody, or artistic sorrow
+            
+        return "3_Review_Required/Mixed_Expression"
 
     except:
-        # 2. THE "NOT HUMAN" CHECK (Dog vs Doc vs Scene)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # Document Check: High edges + specific Aspect Ratio
-        edges = cv2.countNonZero(cv2.Canny(gray, 100, 200))
-        density = (edges / (img.shape[0] * img.shape[1])) * 100
-        h, w = img.shape[:2]
-        is_tall = h > w
-        
-        # A dog usually has a lot of texture but isn't 'structured' like a page
-        if density > 4.5 and is_tall:
-            return "4_Professional/Documents_Certificates"
-        elif 1.5 < density < 4.0:
-            # Most dog photos/animals fall in this medium-texture range
-            return "5_Animals_and_Pets"
-        else:
-            return "6_Scenery_and_Backgrounds"
+        # All non-human/unrecognized shots
+        return "non face recognised images"
 
-st.title("📸 Ultimate AI Photographer Assistant")
-files = st.file_uploader("Upload Batch", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
+st.title("📸 Pro-Photo Culling Engine")
+st.write("Sorting by nuance: Laughs, Subtle Smiles, Editorial Focus, and Candids.")
 
-if files and st.button("🚀 Run Deep Sort"):
+# No manual reset needed - form clears itself on new upload
+with st.form("pro_batch_form", clear_on_submit=True):
+    files = st.file_uploader("Upload Session", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
+    process_btn = st.form_submit_button("🚀 Analyze & Sort Batch")
+
+if process_btn and files:
     zip_buffer = io.BytesIO()
+    progress_bar = st.progress(0)
+    status = st.empty()
+    
     with zipfile.ZipFile(zip_buffer, "a") as zip_f:
-        pbar = st.progress(0)
         for i, file in enumerate(files):
-            # Read image for analysis
-            img_data = file.read()
-            nparr = np.frombuffer(img_data, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            # Progress tracking
+            status.text(f"Processing {i+1}/{len(files)}: {file.name}")
+            progress_bar.progress((i + 1) / len(files))
             
-            category = get_category(img, img_data)
-            zip_f.writestr(f"{category}/{file.name}", img_data)
-            pbar.progress((i + 1) / len(files))
+            img_bytes = file.read()
+            img = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), 1)
             
-    st.download_button("📂 Download 100% Sorted ZIP", zip_buffer.getvalue(), "AI_Final_Sort.zip")
+            cat = get_pro_category(img)
+            zip_f.writestr(f"{cat}/{file.name}", img_bytes)
+            
+    status.success(f"✅ Processed {len(files)} images.")
+    st.download_button("📂 Download Sorted ZIP", zip_buffer.getvalue(), "Pro_Cull_Result.zip")
