@@ -2,6 +2,6 @@ streamlit
 deepface==0.0.99
 tensorflow==2.15.0
 tf-keras==2.15.0
-opencv-contrib-python-headless
+opencv-python-headless
 numpy>=1.23.5,<2.0.0
 typing-extensions>=4.6.1
